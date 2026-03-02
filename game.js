@@ -29,10 +29,11 @@ const game = {
   },
 
   // ---- Map positions (right, top) on 960x580 map ----
+  // Positions as % of map container (matching CSS .loc-haifa/jaffa/eilat)
   mapPositions: {
-    haifa: { right: '140px', top: '90px'  },
-    jaffa: { right: '120px', top: '270px' },
-    eilat: { right: '320px', top: '460px' }
+    haifa: { right: '12.5%', top: '13.8%' },
+    jaffa: { right: '10.4%', top: '44.8%' },
+    eilat: { right: '31.3%', top: '75.9%' }
   },
 
   // ---- Base prices ----
@@ -132,6 +133,16 @@ const game = {
     document.getElementById('bank-display').textContent = this.bankDeposit.toLocaleString();
     this.renderMarketPrices();
     this.renderCargo();
+    // Update travel distances banner from travelHours
+    const distEl = document.getElementById('travel-distances');
+    if (distEl) {
+      const th = this.travelHours;
+      const n = this.locationNames;
+      distEl.textContent =
+        `${n.haifa}↔${n.jaffa}: ${th.haifa.jaffa}ש' \u00a0 ` +
+        `${n.haifa}↔${n.eilat}: ${th.haifa.eilat}ש' \u00a0 ` +
+        `${n.jaffa}↔${n.eilat}: ${th.jaffa.eilat}ש'`;
+    }
     const hp = this.shipHealth;
     document.getElementById('ship-health').textContent = hp;
     const hbar = document.getElementById('health-bar');
@@ -791,12 +802,23 @@ Object.assign(game, {
 // ---- HELP ----
 Object.assign(game, {
   showHelp() {
+    const th = this.travelHours;
+    const n = this.locationNames;
+    const ic = this.locationIcons;
+    const locs = ['haifa','jaffa','eilat'];
+    const pairs = [
+      ['haifa','jaffa'], ['haifa','eilat'], ['jaffa','eilat']
+    ];
+    const travelLines = pairs.map(([a,b]) =>
+      `${ic[a]}${n[a]}↔${ic[b]}${n[b]}: <span class="highlight">${th[a][b]}ש'</span>`
+    ).join(' &nbsp; ');
+    const portList = locs.map(l => `${n[l]} ${ic[l]}`).join(', ');
     const html = `<div style="font-size:16px;line-height:2;direction:rtl;">
-      <p><span class="highlight">מטרת המשחק:</span> להרוויח כמה שיותר כסף ב-168 שעות (7 ימים)</p>
-      <p><span class="highlight">מוצרים:</span> חיטה 🌾, זיתים 🫒, נחושת 🔶</p>
-      <p><span class="highlight">נמלים:</span> חיפה ⚓, יפו 🏛️, אילת 🌴</p>
+      <p><span class="highlight">מטרת המשחק:</span> להרוויח כמה שיותר כסף ב-${this.maxHours} שעות (${Math.round(this.maxHours/24)} ימים)</p>
+      <p><span class="highlight">מוצרים:</span> ${Object.values(this.goodNames).join(', ')}</p>
+      <p><span class="highlight">נמלים:</span> ${portList}</p>
       <hr style="border-color:#333;margin:8px 0;">
-      <p><span class="highlight">זמני נסיעה:</span> חיפה↔יפו: 4ש' &nbsp; חיפה↔אילת: 18ש' &nbsp; יפו↔אילת: 14ש'</p>
+      <p><span class="highlight">זמני נסיעה:</span> ${travelLines}</p>
       <hr style="border-color:#333;margin:8px 0;">
       <p><span class="good">Q</span> = קנה סחורה &nbsp; <span class="good">W</span> = מכור סחורה</p>
       <p><span class="good">E</span> = בנק &nbsp; <span class="good">R</span> = תיקון ספינה</p>
