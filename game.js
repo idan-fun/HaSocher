@@ -28,13 +28,21 @@ const game = {
     eilat: { haifa: 8, jaffa: 4 }
   },
 
-  // ---- Map positions (right, top) on 960x580 map ----
-  // Positions as % of map container (matching CSS .loc-haifa/jaffa/eilat)
+  // ---- Map positions (right, top) ----
+  // Desktop landscape (960×580) and mobile portrait (9:16 aspect)
   mapPositions: {
-    haifa: { right: '12.5%', top: '13.8%' },
-    jaffa: { right: '10.4%', top: '44.8%' },
-    eilat: { right: '31.3%', top: '75.9%' }
+    landscape: {
+      haifa: { right: '12.5%', top: '13.8%' },
+      jaffa: { right: '10.4%', top: '44.8%' },
+      eilat: { right: '31.3%', top: '75.9%' }
+    },
+    portrait: {
+      haifa: { right: '35%', top: '8%' },
+      jaffa: { right: '38%', top: '42%' },
+      eilat: { right: '30%', top: '76%' }
+    }
   },
+  _mapMode: 'landscape', // current map mode
 
   // ---- Base prices ----
   basePrices: {
@@ -154,6 +162,16 @@ const game = {
     document.getElementById('crew-count').textContent = this.crew;
     const cbar = document.getElementById('crew-bar');
     cbar.style.width = crewPct + '%';
+    // Update action button states
+    const btnBuy = document.getElementById('btn-buy');
+    const btnSell = document.getElementById('btn-sell');
+    const btnRepair = document.getElementById('btn-repair');
+    const btnCrew = document.getElementById('btn-crew');
+
+    if (btnBuy) btnBuy.disabled = (this.money === 0);
+    if (btnSell) btnSell.disabled = (this.getTotalCargo() === 0);
+    if (btnRepair) btnRepair.disabled = (this.shipHealth >= 100);
+    if (btnCrew) btnCrew.disabled = (this.crew >= this.maxCrew);
     cbar.className = 'status-bar-fill ' + (crewPct > 60 ? 'bar-green' : crewPct > 30 ? 'bar-yellow' : 'bar-red');
   },
 
@@ -598,12 +616,53 @@ Object.assign(game, {
 Object.assign(game, {
   showMap() {
     this.showScreen('screen-map');
+    this._detectMapMode();
     this.updateMapUI();
+  },
+
+  _detectMapMode() {
+    // Detect if mobile (screen width <= 700px) and switch to portrait mode
+    const isMobile = window.innerWidth <= 700;
+    this._mapMode = isMobile ? 'portrait' : 'landscape';
+    
+    const mapWrap = document.getElementById('map-wrap');
+    const coastlineSvg = document.getElementById('map-coastline');
+    
+    if (isMobile) {
+      mapWrap.classList.add('map-portrait');
+      // Portrait SVG: vertical coastline (viewBox adjusted for 9:16 aspect)
+      if (coastlineSvg) {
+        coastlineSvg.setAttribute('viewBox', '0 0 420 747'); // 9:16 aspect
+        coastlineSvg.innerHTML = `
+          <!-- Vertical coastline for portrait -->
+          <polyline points="320,40 310,100 305,180 300,280 295,380 290,480 285,580 280,680 275,720"
+            fill="none" stroke="#1a3a1a" stroke-width="35" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/>
+          <!-- Southern tip -->
+          <polyline points="200,680 220,700 240,720 260,740"
+            fill="none" stroke="#1a3a1a" stroke-width="25" stroke-linecap="round" opacity="0.5"/>
+        `;
+      }
+    } else {
+      mapWrap.classList.remove('map-portrait');
+      // Landscape SVG: original horizontal coastline
+      if (coastlineSvg) {
+        coastlineSvg.setAttribute('viewBox', '0 0 960 580');
+        coastlineSvg.innerHTML = `
+          <!-- Mediterranean coast -->
+          <polyline points="870,60 850,120 840,200 830,280 820,360 810,440 800,500 780,540"
+            fill="none" stroke="#1a3a1a" stroke-width="40" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/>
+          <!-- Red Sea / Gulf of Aqaba -->
+          <polyline points="680,480 700,510 720,540 740,570"
+            fill="none" stroke="#1a3a1a" stroke-width="30" stroke-linecap="round" opacity="0.5"/>
+        `;
+      }
+    }
   },
 
   updateMapUI() {
     const ship = document.getElementById('map-ship');
-    const pos = this.mapPositions[this.location];
+    const positions = this.mapPositions[this._mapMode];
+    const pos = positions[this.location];
     ship.style.right = pos.right;
     ship.style.top = pos.top;
 
@@ -639,13 +698,37 @@ Object.assign(game, {
   drawMapRoutes() {
     const svg = document.getElementById('map-routes');
     if (!svg) return;
-    // Map is 960x580, positions use 'right' so x = 960 - right - 60 (half icon width)
-    const W = 960;
-    const centers = {
-      haifa: { x: W - 140 - 60, y: 90 + 50 },
-      jaffa: { x: W - 120 - 60, y: 270 + 50 },
-      eilat: { x: W - 320 - 60, y: 460 + 50 }
-    };
+    
+    // Calculate centers based on current map mode
+    let centers;
+    if (this._mapMode === 'portrait') {
+      // Portrait mode: 420×747 (9:16 aspect)
+      const W = 420, H = 747;
+      const positions = this.mapPositions.portrait;
+      centers = {
+        haifa: {
+          x: W - (parseFloat(positions.haifa.right) / 100 * W) - 60,
+          y: (parseFloat(positions.haifa.top) / 100 * H) + 50
+        },
+        jaffa: {
+          x: W - (parseFloat(positions.jaffa.right) / 100 * W) - 60,
+          y: (parseFloat(positions.jaffa.top) / 100 * H) + 50
+        },
+        eilat: {
+          x: W - (parseFloat(positions.eilat.right) / 100 * W) - 60,
+          y: (parseFloat(positions.eilat.top) / 100 * H) + 50
+        }
+      };
+    } else {
+      // Landscape mode: 960×580
+      const W = 960;
+      centers = {
+        haifa: { x: W - 140 - 60, y: 90 + 50 },
+        jaffa: { x: W - 120 - 60, y: 270 + 50 },
+        eilat: { x: W - 320 - 60, y: 460 + 50 }
+      };
+    }
+    
     svg.innerHTML = '';
     [['haifa','jaffa'],['haifa','eilat'],['jaffa','eilat']].forEach(([a,b]) => {
       const hrs = this.travelHours[a][b];
@@ -696,7 +779,8 @@ Object.assign(game, {
 
     // Animate ship
     const ship = document.getElementById('map-ship');
-    const pos = this.mapPositions[dest];
+    const positions = this.mapPositions[this._mapMode];
+    const pos = positions[dest];
     ship.style.right = pos.right;
     ship.style.top = pos.top;
 
