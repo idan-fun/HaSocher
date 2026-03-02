@@ -53,6 +53,8 @@ const game = {
     this.shipHealth = 100; this.crew = 5;
     this.cargo = { wheat: 0, olives: 0, copper: 0 };
     this.stats = { tradesMade: 0, eventsEncountered: 0, portsVisited: ['jaffa'] };
+    this._mobileLogUnread = 0;
+    this.closeMobileLog();
     this.generateAllPrices();
     this.showScreen('screen-main');
     this.updateUI();
@@ -61,7 +63,7 @@ const game = {
     this.addMessage('אתה מתחיל ביפו 🏛️ - עיר הנמל העתיקה.', 'system');
     this.addMessage('יש לך 1000 ₪, ספינה, וצוות של 5 אנשים.', 'info');
     this.addMessage('קנה סחורות בזול ומכור ביוקר. יש לך 168 שעות (7 ימים)!', 'info');
-    this.addMessage('לחץ M לפתיחת המפה ונסיעה לנמל אחר.', 'info');
+    this.addMessage('📱 במובייל: לחץ על כפתור "📜 יומן" לצפייה ביומן האירועים.', 'info');
     this.bindKeyboard();
   },
 
@@ -220,15 +222,87 @@ const game = {
     cbar.className = 'status-bar-fill ' + (pct < 80 ? 'bar-green' : pct < 95 ? 'bar-yellow' : 'bar-red');
   },
 
-  clearLog() { document.getElementById('message-log').innerHTML = ''; },
+  scrollLogToBottom() {
+    const log = document.getElementById('message-log');
+    if (log) log.scrollTop = log.scrollHeight;
+  },
+
+  toggleLogExpand() {
+    const log = document.getElementById('message-log');
+    if (log) log.classList.toggle('expanded');
+    const btn = document.getElementById('log-expand-btn');
+    if (btn) btn.textContent = log && log.classList.contains('expanded') ? '⤡' : '⤢';
+  },
+
+  clearLog() {
+    document.getElementById('message-log').innerHTML = '';
+    const mobileContent = document.getElementById('mobile-log-drawer-content');
+    if (mobileContent) mobileContent.innerHTML = '';
+    this._mobileLogUnread = 0;
+    this._updateMobileLogBadge();
+  },
 
   addMessage(text, type = 'info') {
+    // Desktop log
     const log = document.getElementById('message-log');
     const div = document.createElement('div');
     div.className = 'msg msg-' + type;
     div.textContent = text;
     log.appendChild(div);
     log.scrollTop = log.scrollHeight;
+
+    // Mobile drawer log (mirror)
+    const mobileContent = document.getElementById('mobile-log-drawer-content');
+    if (mobileContent) {
+      const mdiv = document.createElement('div');
+      mdiv.className = 'msg msg-' + type;
+      mdiv.textContent = text;
+      mobileContent.appendChild(mdiv);
+      mobileContent.scrollTop = mobileContent.scrollHeight;
+    }
+
+    // Badge: count unread messages when drawer is closed
+    const drawer = document.getElementById('mobile-log-drawer');
+    if (drawer && !drawer.classList.contains('open')) {
+      this._mobileLogUnread = (this._mobileLogUnread || 0) + 1;
+      this._updateMobileLogBadge();
+    }
+  },
+
+  _updateMobileLogBadge() {
+    const badge = document.getElementById('mobile-log-badge');
+    if (!badge) return;
+    const count = this._mobileLogUnread || 0;
+    if (count > 0) {
+      badge.textContent = count > 99 ? '99+' : count;
+      badge.style.display = 'inline-flex';
+    } else {
+      badge.style.display = 'none';
+    }
+  },
+
+  openMobileLog() {
+    const drawer = document.getElementById('mobile-log-drawer');
+    const overlay = document.getElementById('mobile-log-overlay');
+    if (drawer) drawer.classList.add('open');
+    if (overlay) overlay.classList.add('open');
+    // Reset unread count
+    this._mobileLogUnread = 0;
+    this._updateMobileLogBadge();
+    // Scroll to bottom
+    setTimeout(() => this.scrollMobileLogToBottom(), 50);
+  },
+
+  closeMobileLog() {
+    const drawer = document.getElementById('mobile-log-drawer');
+    const overlay = document.getElementById('mobile-log-overlay');
+    if (drawer) drawer.classList.remove('open');
+    if (overlay) overlay.classList.remove('open');
+  },
+
+  scrollMobileLogToBottom() {
+    const c = document.getElementById('mobile-log-drawer-content');
+    if (c) c.scrollTop = c.scrollHeight;
   },
 
   showScreen(id) {
@@ -262,6 +336,8 @@ const game = {
       const sid = active.id;
       if (e.key === 'Escape') {
         if (document.getElementById('modal-overlay').classList.contains('active')) { this.hideModal(); return; }
+        const mobileDrawer = document.getElementById('mobile-log-drawer');
+        if (mobileDrawer && mobileDrawer.classList.contains('open')) { this.closeMobileLog(); return; }
         if (sid === 'screen-map') { this.showScreen('screen-main'); return; }
       }
       if (e.target.tagName === 'INPUT') return;
@@ -881,4 +957,23 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('screen-intro').addEventListener('click', () => {
     if (document.querySelector('#screen-intro.active')) game.init();
   });
+
+  // Mobile log drawer: swipe down to close
+  const drawer = document.getElementById('mobile-log-drawer');
+  if (drawer) {
+    let touchStartY = 0;
+    let touchStartScrollTop = 0;
+    drawer.addEventListener('touchstart', (e) => {
+      touchStartY = e.touches[0].clientY;
+      const content = document.getElementById('mobile-log-drawer-content');
+      touchStartScrollTop = content ? content.scrollTop : 0;
+    }, { passive: true });
+    drawer.addEventListener('touchend', (e) => {
+      const dy = e.changedTouches[0].clientY - touchStartY;
+      // Only close if swiped down significantly AND content is scrolled to top
+      if (dy > 80 && touchStartScrollTop <= 0) {
+        game.closeMobileLog();
+      }
+    }, { passive: true });
+  }
 });
