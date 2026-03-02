@@ -4,14 +4,14 @@
 // =============================================
 const game = {
   // ---- State ----
-  money: 1000, bankDeposit: 0,
+  money: 5000, bankDeposit: 0,
   totalHours: 0,       // total hours elapsed
   maxHours: 168,       // 7 days * 24 hours
   lastPriceDay: 1,     // last day prices were updated
   location: 'jaffa',
-  shipHealth: 100, crew: 5, maxCrew: 10, cargoCapacity: 100,
+  shipHealth: 100, crew: 5, maxCrew: 10, cargoCapacity: 100, maxCargoCapacity: 500,
   cargo: { wheat: 0, olives: 0, copper: 0 },
-  repairCostPerPoint: 5, crewHireCost: 50,
+  repairCostPerPoint: 5, crewHireCost: 50, cargoUpgradeCost: 1000,
   stats: { tradesMade: 0, eventsEncountered: 0, portsVisited: ['haifa'] },
 
   // ---- Names & Icons ----
@@ -46,9 +46,9 @@ const game = {
 
   // ---- Base prices ----
   basePrices: {
-    haifa: { wheat: 15, olives: 25, copper: 40 },
-    jaffa: { wheat: 12, olives: 22, copper: 38 },
-    eilat: { wheat: 20, olives: 30, copper: 35 }
+    haifa: { wheat: 50, olives: 550, copper: 3150 },
+    jaffa: { wheat: 50, olives: 550, copper: 3150 },
+    eilat: { wheat: 50, olives: 550, copper: 3150 }
   },
   currentPrices: {},
 
@@ -56,7 +56,7 @@ const game = {
   // INIT
   // =====================
   init() {
-    this.money = 1000; this.bankDeposit = 0;
+    this.money = 5000; this.bankDeposit = 0;
     this.totalHours = 0; this.lastPriceDay = 1; this.location = 'jaffa';
     this.shipHealth = 100; this.crew = 5;
     this.cargo = { wheat: 0, olives: 0, copper: 0 };
@@ -69,7 +69,7 @@ const game = {
     this.clearLog();
     this.addMessage('ברוך הבא לסוחר! אתה סוחר ים בחוף ישראל.', 'system');
     this.addMessage('אתה מתחיל ביפו 🏛️ - עיר הנמל העתיקה.', 'system');
-    this.addMessage('יש לך 1000 ₪, ספינה, וצוות של 5 אנשים.', 'info');
+    this.addMessage('יש לך 5000 ₪, ספינה, וצוות של 5 אנשים.', 'info');
     this.addMessage('קנה סחורות בזול ומכור ביוקר. יש לך 168 שעות (7 ימים)!', 'info');
     this.addMessage('📱 במובייל: לחץ על כפתור "📜 יומן" לצפייה ביומן האירועים.', 'info');
     this.bindKeyboard();
@@ -83,7 +83,16 @@ const game = {
       this.currentPrices[loc] = {};
       ['wheat','olives','copper'].forEach(good => {
         const base = this.basePrices[loc][good];
-        this.currentPrices[loc][good] = Math.max(5, Math.round(base * (0.7 + Math.random() * 0.6)));
+        // Wheat: base=50, range 0.3-1.7 = 15-85
+        // Olives: base=550, range 0.45-1.55 = 250-850
+        // Copper: base=3150, range 0.48-1.52 = 1500-4800
+        if (good === 'wheat') {
+          this.currentPrices[loc][good] = Math.round(base * (0.3 + Math.random() * 1.4));
+        } else if (good === 'olives') {
+          this.currentPrices[loc][good] = Math.round(base * (0.45 + Math.random() * 1.1));
+        } else if (good === 'copper') {
+          this.currentPrices[loc][good] = Math.round(base * (0.48 + Math.random() * 1.04));
+        }
       });
     });
   },
@@ -91,7 +100,16 @@ const game = {
   generateLocationPrices(loc) {
     ['wheat','olives','copper'].forEach(good => {
       const base = this.basePrices[loc][good];
-      this.currentPrices[loc][good] = Math.max(5, Math.round(base * (0.7 + Math.random() * 0.6)));
+      // Wheat: base=50, range 0.3-1.7 = 15-85
+      // Olives: base=550, range 0.45-1.55 = 250-850
+      // Copper: base=3150, range 0.48-1.52 = 1500-4800
+      if (good === 'wheat') {
+        this.currentPrices[loc][good] = Math.round(base * (0.3 + Math.random() * 1.4));
+      } else if (good === 'olives') {
+        this.currentPrices[loc][good] = Math.round(base * (0.45 + Math.random() * 1.1));
+      } else if (good === 'copper') {
+        this.currentPrices[loc][good] = Math.round(base * (0.48 + Math.random() * 1.04));
+      }
     });
   },
 
@@ -167,11 +185,13 @@ const game = {
     const btnSell = document.getElementById('btn-sell');
     const btnRepair = document.getElementById('btn-repair');
     const btnCrew = document.getElementById('btn-crew');
+    const btnCargo = document.getElementById('btn-cargo');
 
     if (btnBuy) btnBuy.disabled = (this.money === 0);
     if (btnSell) btnSell.disabled = (this.getTotalCargo() === 0);
     if (btnRepair) btnRepair.disabled = (this.shipHealth >= 100);
     if (btnCrew) btnCrew.disabled = (this.crew >= this.maxCrew);
+    if (btnCargo) btnCargo.disabled = (this.cargoCapacity >= this.maxCargoCapacity || this.money < this.cargoUpgradeCost);
     cbar.className = 'status-bar-fill ' + (crewPct > 60 ? 'bar-green' : crewPct > 30 ? 'bar-yellow' : 'bar-red');
   },
 
@@ -366,6 +386,7 @@ const game = {
           case 'e': this.showBankMenu(); break;
           case 'r': this.showRepairMenu(); break;
           case 't': this.showCrewMenu(); break;
+          case 'u': this.showCargoUpgradeMenu(); break;
           case 'm': this.showMap(); break;
           case 'h': this.showHelp(); break;
         }
@@ -609,7 +630,44 @@ Object.assign(game, {
         if(cd) cd.textContent = q>0 ? `עלות: ${q*this.crewHireCost}₪` : '';
       });
     }, 80);
-  }
+  },
+
+  // =====================
+  // CARGO UPGRADE
+  // =====================
+  showCargoUpgradeMenu() {
+    const canUpgrade = this.maxCargoCapacity - this.cargoCapacity;
+    const upgradeAmount = 50; // Each upgrade adds 50 capacity
+    const cost = this.cargoUpgradeCost;
+    const canAfford = this.money >= cost;
+    
+    const html = `
+      <p>קיבולת נוכחית: <span class="highlight">${this.cargoCapacity}/${this.maxCargoCapacity}</span></p>
+      <p>עלות שדרוג: <span class="highlight">${cost}₪</span></p>
+      <p>שדרוג מוסיף: <span class="good">+${upgradeAmount}</span> יחידות</p>
+      <p style="font-size:14px;color:#888;margin-top:8px;">שדרג את מחסן הספינה כדי לשאת יותר סחורות</p>
+      ${canUpgrade === 0 ? '<p class="good" style="margin-top:8px;">הגעת לקיבולת המקסימלית!</p>' :
+        !canAfford ? '<p class="bad" style="margin-top:8px;">אין לך מספיק כסף לשדרוג!</p>' : ''}
+    `;
+    
+    const btns = [{ text: 'ביטול', fn: () => this.hideModal() }];
+    if (canUpgrade > 0 && canAfford) {
+      btns.unshift({ 
+        text: `שדרג ב-${cost}₪`, 
+        cls: 'primary', 
+        fn: () => {
+          this.money -= cost;
+          this.cargoCapacity += upgradeAmount;
+          this.cargoUpgradeCost = Math.round(this.cargoUpgradeCost * 1.5); // Cost increases 50% each time
+          this.addMessage(`שדרגת את מחסן הספינה! קיבולת חדשה: ${this.cargoCapacity}`, 'good');
+          this.updateUI();
+          this.hideModal();
+        }
+      });
+    }
+    
+    this.showModal('🔧 שדרוג מחסן ספינה', html, btns);
+  },
 });
 
 // ---- MAP & TRAVEL ----
