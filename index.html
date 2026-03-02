@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>הסוחר - The Merchant (1989)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700&family=Rajdhani:wght@400;500;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #000;
+    color: #aaa;
+    font-family: 'Heebo', 'Segoe UI', sans-serif;
+    font-size: 16px;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+  }
+  #game-container {
+    width: 1100px;
+    height: 750px;
+    background: #000;
+    border: 1px solid rgba(0,150,200,0.3);
+    border-radius: 6px;
+    box-shadow: 0 0 60px rgba(0,100,200,0.15), 0 0 120px rgba(0,50,100,0.1);
+    position: relative;
+    overflow: hidden;
+  }
+  .screen { display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+  .screen.active { display: flex; flex-direction: column; }
+
+  /* COLORS */
+  .c-white { color: #fff; } .c-yellow { color: #ff0; } .c-cyan { color: #0ff; }
+  .c-green { color: #0f0; } .c-red { color: #f00; } .c-gray { color: #aaa; }
+
+  /* INTRO */
+  #screen-intro {
+    background: #000011;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .title-box { border: 2px solid #ff0; border-radius: 4px; padding: 24px 60px; text-align: center; box-shadow: 0 0 30px rgba(255,200,0,0.15); }
+  .title-box h1 { font-size: 88px; color: #ff0; font-family: 'Heebo', sans-serif; font-weight: 700; text-shadow: 0 0 20px rgba(255,200,0,0.5); letter-spacing: 6px; }
+  .title-box .subtitle { font-size: 28px; color: #0ff; margin-top: 6px; font-family: 'Rajdhani', sans-serif; font-weight: 500; letter-spacing: 4px; }
+  .title-box .year { font-size: 16px; color: #555; margin-top: 6px; font-family: 'Rajdhani', sans-serif; letter-spacing: 2px; }
+  .press-key { font-size: 20px; color: #0f0; animation: blink 1s step-end infinite; margin-top: 20px; font-weight: 400; letter-spacing: 1px; }
+  .credits { font-size: 14px; color: #444; margin-top: 8px; font-family: 'Rajdhani', sans-serif; letter-spacing: 1px; }
+  .intro-ship { font-size: 80px; margin-bottom: 12px; animation: sail 4s ease-in-out infinite alternate; }
+  @keyframes blink { 50% { opacity: 0; } }
+  @keyframes sail { 0% { transform: translateX(-25px) rotate(-5deg); } 100% { transform: translateX(25px) rotate(5deg); } }
+
+  /* MAIN GAME */
+  #screen-main { background: #000080; flex-direction: column; }
+  .top-bar {
+    background: #00008b;
+    border-bottom: 2px solid rgba(0,255,255,0.4);
+    padding: 8px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+  .top-bar .location { color: #0ff; font-size: 18px; font-weight: 700; letter-spacing: 0.5px; }
+  .top-bar .time-info { color: #ff0; font-size: 15px; font-family: 'Rajdhani', sans-serif; font-weight: 500; letter-spacing: 0.5px; }
+  .top-bar .money-info { color: #0f0; font-size: 17px; font-weight: 700; font-family: 'Rajdhani', sans-serif; }
+  .main-content { flex: 1; display: flex; overflow: hidden; }
+
+  .right-panel {
+    width: 360px;
+    border-right: 2px solid #0055aa;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+  .left-panel { flex: 1; padding: 8px 10px; display: flex; flex-direction: column; gap: 8px; }
+
+  .panel-title {
+    color: #0ff;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    border-bottom: 1px solid rgba(0,85,170,0.6);
+    padding-bottom: 4px;
+    margin-bottom: 5px;
+    text-align: center;
+  }
+
+  .market-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .market-table th { color: #ff0; text-align: center; padding: 4px 3px; border-bottom: 1px solid #222; font-size: 12px; font-weight: 600; line-height: 1.4; letter-spacing: 0.5px; }
+  .market-table td { text-align: center; padding: 4px 3px; color: #ddd; font-size: 14px; font-family: 'Rajdhani', sans-serif; font-weight: 500; }
+  .market-table tr:hover td { background: rgba(0,0,80,0.5); }
+  .price-up { color: #4cff4c; font-weight: 600; } .price-down { color: #ff5555; font-weight: 600; } .price-normal { color: #ddd; }
+
+  .cargo-item { display: flex; justify-content: space-between; padding: 4px 5px; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .cargo-item .cname { color: #ff0; font-weight: 500; } .cargo-item .camount { color: #fff; font-family: 'Rajdhani', sans-serif; font-weight: 600; } .cargo-item .cvalue { color: #4cff4c; font-family: 'Rajdhani', sans-serif; }
+
+  .status-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 13px; }
+  .status-label { color: #666; font-weight: 400; } .status-value { color: #ccc; font-family: 'Rajdhani', sans-serif; font-weight: 600; font-size: 14px; }
+  .status-bar { height: 7px; background: #111; border-radius: 4px; margin: 2px 0; overflow: hidden; }
+  .status-bar-fill { height: 100%; transition: width 0.4s ease; border-radius: 4px; }
+  .bar-green { background: linear-gradient(90deg, #0a0, #0f0); } .bar-yellow { background: linear-gradient(90deg, #aa0, #ff0); } .bar-red { background: linear-gradient(90deg, #a00, #f44); }
+
+  .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .action-btn {
+    background: rgba(0,0,80,0.6);
+    border: 1px solid rgba(0,85,170,0.5);
+    border-radius: 4px;
+    color: #bbb;
+    padding: 10px 8px;
+    cursor: pointer;
+    font-family: 'Heebo', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    text-align: center;
+    transition: all 0.15s;
+    direction: rtl;
+    line-height: 1.3;
+  }
+  .action-btn:hover { background: rgba(0,0,150,0.7); border-color: rgba(255,200,0,0.6); color: #ff0; }
+  .action-btn:active { background: rgba(0,0,40,0.8); }
+  .action-btn .key { color: #0ff; font-size: 11px; font-family: 'Rajdhani', sans-serif; font-weight: 600; letter-spacing: 1px; display: block; opacity: 0.8; }
+
+  .message-log {
+    flex: 1;
+    overflow-y: auto;
+    font-size: 13px;
+    line-height: 1.6;
+    padding: 8px 10px;
+    background: rgba(0,0,20,0.8);
+    border: 1px solid rgba(0,50,100,0.5);
+    border-radius: 3px;
+    min-height: 100px;
+  }
+  .message-log .msg { padding: 1px 0; }
+  .msg-info { color: #666; } .msg-good { color: #4cff4c; } .msg-bad { color: #ff5555; }
+  .msg-event { color: #ffcc00; } .msg-system { color: #00ccff; font-weight: 500; }
+
+  .bottom-bar {
+    background: rgba(0,0,50,0.8);
+    border-top: 1px solid rgba(0,85,170,0.4);
+    padding: 5px 12px;
+    font-size: 12px;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    color: #555;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  /* MAP */
+  #screen-map { background: #000022; flex-direction: column; align-items: center; justify-content: center; }
+  .map-title { color: #0ff; font-size: 22px; font-weight: 700; letter-spacing: 3px; margin-bottom: 10px; text-align: center; }
+  .map-wrap { position: relative; width: 960px; height: 580px; }
+  .map-bg {
+    width: 100%; height: 100%;
+    background: linear-gradient(160deg, #001133 0%, #002255 40%, #001144 100%);
+    border: 2px solid #0055aa;
+    position: relative;
+    overflow: hidden;
+  }
+  .map-waves {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background-image: repeating-linear-gradient(
+      0deg, transparent, transparent 22px,
+      rgba(0,80,160,0.15) 22px, rgba(0,80,160,0.15) 24px
+    );
+    animation: waveMove 8s linear infinite;
+  }
+  @keyframes waveMove { 0% { background-position: 0 0; } 100% { background-position: 0 48px; } }
+
+  /* Israel map outline (simplified) */
+  .map-israel-outline {
+    position: absolute;
+    right: 60px;
+    top: 80px;
+    width: 180px;
+    height: 420px;
+    opacity: 0.15;
+    pointer-events: none;
+  }
+
+  .map-location {
+    position: absolute;
+    width: 120px;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.2s;
+    z-index: 5;
+  }
+  .map-location:hover { transform: scale(1.1); }
+  .map-location.current { animation: locPulse 1.5s ease-in-out infinite; }
+  @keyframes locPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+  .map-location .loc-icon { font-size: 40px; text-shadow: 0 0 14px currentColor; }
+  .map-location .loc-name { font-size: 16px; margin-top: 3px; font-weight: 700; letter-spacing: 0.5px; }
+  .map-location .loc-dist { font-size: 12px; color: #ff0; margin-top: 3px; font-family: 'Rajdhani', sans-serif; font-weight: 600; }
+  .map-location .loc-price { font-size: 11px; color: #888; margin-top: 2px; line-height: 1.6; font-family: 'Rajdhani', sans-serif; }
+
+  /* Positions on the map - Israeli coast layout */
+  .loc-haifa  { top: 80px;  right: 120px; color: #0ff; }
+  .loc-jaffa  { top: 260px; right: 100px; color: #0f0; }
+  .loc-eilat  { top: 440px; right: 300px; color: #ff0; }
+
+  .map-ship {
+    position: absolute;
+    font-size: 32px;
+    color: #fff;
+    text-shadow: 0 0 12px #fff;
+    transition: top 1.2s ease-in-out, right 1.2s ease-in-out;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .map-route {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none; z-index: 2;
+  }
+  .map-instructions { color: #555; font-size: 13px; font-family: 'Rajdhani', sans-serif; font-weight: 500; letter-spacing: 1px; text-align: center; margin-top: 10px; }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none;
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.75);
+    z-index: 100;
+    justify-content: center;
+    align-items: center;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal-window {
+    background: linear-gradient(160deg, #000060 0%, #000040 100%);
+    border: 1px solid rgba(0,200,255,0.35);
+    border-radius: 6px;
+    min-width: 460px;
+    max-width: 680px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 0 30px rgba(0,150,255,0.15);
+    overflow: hidden;
+  }
+  .modal-title {
+    background: rgba(0,0,100,0.8);
+    color: #ff0;
+    padding: 12px 18px;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-align: center;
+    border-bottom: 1px solid rgba(0,85,170,0.4);
+  }
+  .modal-body { padding: 16px 20px; font-size: 15px; color: #ccc; direction: rtl; line-height: 1.7; }
+  .modal-body p { margin: 6px 0; }
+  .modal-body .highlight { color: #ff0; font-weight: 600; }
+  .modal-body .good { color: #4cff4c; font-weight: 600; }
+  .modal-body .bad { color: #ff5555; font-weight: 600; }
+  .modal-input-row { display: flex; align-items: center; gap: 12px; margin: 14px 0; direction: rtl; }
+  .modal-input-row label { color: #0ff; min-width: 140px; font-size: 15px; font-weight: 500; }
+  .modal-input {
+    background: rgba(0,0,20,0.9);
+    border: 1px solid rgba(0,200,255,0.5);
+    border-radius: 3px;
+    color: #ff0;
+    padding: 6px 12px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    width: 130px;
+    text-align: center;
+    direction: ltr;
+    transition: border-color 0.2s;
+  }
+  .modal-input:focus { outline: none; border-color: #ff0; box-shadow: 0 0 8px rgba(255,200,0,0.2); }
+  .modal-buttons { display: flex; gap: 10px; justify-content: center; padding: 14px; border-top: 1px solid rgba(255,255,255,0.06); }
+  .modal-btn {
+    background: rgba(0,0,80,0.7);
+    border: 1px solid rgba(0,85,170,0.6);
+    border-radius: 4px;
+    color: #bbb;
+    padding: 8px 28px;
+    cursor: pointer;
+    font-family: 'Heebo', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    transition: all 0.15s;
+    letter-spacing: 0.5px;
+  }
+  .modal-btn:hover { background: rgba(0,0,150,0.8); border-color: rgba(255,200,0,0.6); color: #ff0; }
+  .modal-btn.primary { border-color: rgba(0,200,0,0.6); color: #4cff4c; }
+  .modal-btn.primary:hover { background: rgba(0,40,0,0.8); }
+  .modal-btn.danger { border-color: rgba(255,80,80,0.6); color: #ff5555; }
+  .modal-btn.danger:hover { background: rgba(40,0,0,0.8); }
+  .good-select-item {
+    margin: 5px 0; padding: 10px 14px;
+    border: 1px solid rgba(0,50,100,0.6);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  .good-select-item:hover { background: rgba(0,0,80,0.6); border-color: rgba(0,200,255,0.5); }
+
+  /* GAME OVER */
+  #screen-gameover {
+    background: #000;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 18px;
+  }
+  .gameover-title {
+    font-size: 52px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-align: center;
+    padding: 22px 50px;
+    border: 2px solid;
+    border-radius: 6px;
+  }
+  .gameover-title.win { color: #4cff4c; border-color: rgba(76,255,76,0.5); text-shadow: 0 0 30px rgba(76,255,76,0.4); }
+  .gameover-title.lose { color: #ff5555; border-color: rgba(255,85,85,0.5); text-shadow: 0 0 30px rgba(255,85,85,0.4); }
+  .final-stats { font-size: 16px; text-align: center; color: #888; line-height: 2.2; }
+  .final-stats .slabel { color: #0ff; font-weight: 500; }
+  .final-stats .svalue { color: #ff0; font-family: 'Rajdhani', sans-serif; font-weight: 600; font-size: 18px; }
+  .score-rank { font-size: 26px; font-weight: 700; color: #ff0; margin: 10px 0; letter-spacing: 1px; }
+  .restart-btn {
+    background: rgba(0,0,80,0.7);
+    border: 2px solid rgba(0,200,255,0.5);
+    border-radius: 6px;
+    color: #fff;
+    padding: 12px 44px;
+    cursor: pointer;
+    font-family: 'Heebo', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    margin-top: 10px;
+    transition: all 0.2s;
+    letter-spacing: 1px;
+  }
+  .restart-btn:hover { background: rgba(0,0,150,0.8); border-color: rgba(255,200,0,0.7); color: #ff0; }
+
+  ::-webkit-scrollbar { width: 7px; }
+  ::-webkit-scrollbar-track { background: #000; }
+  ::-webkit-scrollbar-thumb { background: #0055aa; }
+  ::-webkit-scrollbar-thumb:hover { background: #0ff; }
+</style>
+</head>
+<body>
+<div id="game-container">
+
+  <!-- INTRO SCREEN -->
+  <div id="screen-intro" class="screen active">
+    <div class="intro-ship">⛵</div>
+    <div class="title-box">
+      <h1>הסוחר</h1>
+      <div class="subtitle">THE MERCHANT</div>
+      <div class="year">משחק מסחר ימי • 1989</div>
+    </div>
+    <div class="press-key">לחץ על מקש כלשהו להתחלה</div>
+    <div style="font-size:19px; color:#555; margin-top:5px;">Press any key to start</div>
+    <div class="credits">DOS Game Recreation • Web Version 2026</div>
+  </div>
+
+  <!-- MAIN GAME SCREEN -->
+  <div id="screen-main" class="screen">
+    <div class="top-bar">
+      <div class="location" id="current-location">🏛️ יפו</div>
+      <div class="time-info">⏱ שעה <span id="current-hour">0</span> מתוך 168</div>
+      <div class="time-info" style="color:#aaa; font-size:17px;">יום <span id="current-day">1</span>/7</div>
+      <div class="money-info">💰 <span id="player-money">1000</span> ₪</div>
+    </div>
+    <div class="main-content">
+      <!-- RIGHT: market + cargo + ship status -->
+      <div class="right-panel">
+        <div class="panel-title">📊 מחירי שוק</div>
+        <table class="market-table">
+          <thead id="market-header">
+            <tr><th>מוצר</th><th>קנייה</th><th>מכירה</th><th>מכירה</th><th>מכירה</th></tr>
+          </thead>
+          <tbody id="market-prices"></tbody>
+        </table>
+
+        <div class="panel-title" style="margin-top:10px;">📦 מטען</div>
+        <div id="cargo-display"></div>
+        <div class="status-row" style="margin-top:5px; border-top:1px solid #222; padding-top:4px;">
+          <span class="status-label">משקל:</span>
+          <span class="status-value"><span id="cargo-weight">0</span>/<span id="cargo-cap">100</span></span>
+        </div>
+        <div class="status-bar"><div id="cargo-bar" class="status-bar-fill bar-green" style="width:0%"></div></div>
+
+        <div class="panel-title" style="margin-top:10px;">🚢 ספינה</div>
+        <div class="status-row">
+          <span class="status-label">תקינות:</span>
+          <span class="status-value"><span id="ship-health">100</span>%</span>
+        </div>
+        <div class="status-bar"><div id="health-bar" class="status-bar-fill bar-green" style="width:100%"></div></div>
+        <div class="status-row">
+          <span class="status-label">צוות:</span>
+          <span class="status-value"><span id="crew-count">5</span>/10</span>
+        </div>
+        <div class="status-bar"><div id="crew-bar" class="status-bar-fill bar-yellow" style="width:50%"></div></div>
+        <div class="status-row">
+          <span class="status-label">בנק:</span>
+          <span class="status-value"><span id="bank-display">0</span> ₪</span>
+        </div>
+      </div>
+
+      <!-- LEFT: actions + log -->
+      <div class="left-panel">
+        <div class="panel-title">⚙️ פעולות</div>
+        <div class="action-grid">
+          <button class="action-btn" onclick="game.showBuyMenu()">
+            <span class="key">[Q]</span>קנה סחורה
+          </button>
+          <button class="action-btn" onclick="game.showSellMenu()">
+            <span class="key">[W]</span>מכור סחורה
+          </button>
+          <button class="action-btn" onclick="game.showBankMenu()">
+            <span class="key">[E]</span>בנק
+          </button>
+          <button class="action-btn" onclick="game.showRepairMenu()">
+            <span class="key">[R]</span>תיקון ספינה
+          </button>
+          <button class="action-btn" onclick="game.showCrewMenu()">
+            <span class="key">[T]</span>גייס צוות
+          </button>
+          <button class="action-btn" onclick="game.showMap()">
+            <span class="key">[M]</span>מפה / נסע
+          </button>
+        </div>
+
+        <div class="panel-title" style="margin-top:6px;">📜 יומן אירועים</div>
+        <div class="message-log" id="message-log"></div>
+      </div>
+    </div>
+    <div class="bottom-bar">
+      <span class="c-cyan">Q</span>=קנה &nbsp;
+      <span class="c-cyan">W</span>=מכור &nbsp;
+      <span class="c-cyan">E</span>=בנק &nbsp;
+      <span class="c-cyan">R</span>=תיקון &nbsp;
+      <span class="c-cyan">T</span>=צוות &nbsp;
+      <span class="c-cyan">M</span>=מפה/נסע &nbsp;
+      <span class="c-cyan">H</span>=עזרה &nbsp;|&nbsp;
+      <span style="color:#555;">חיפה↔יפו: 4ש' &nbsp; חיפה↔אילת: 18ש' &nbsp; יפו↔אילת: 14ש'</span>
+    </div>
+  </div>
+
+  <!-- MAP SCREEN -->
+  <div id="screen-map" class="screen">
+    <div class="map-title">🗺️ מפת חוף ישראל</div>
+    <div class="map-wrap">
+      <div class="map-bg">
+        <div class="map-waves"></div>
+        <!-- Simplified Israel coastline SVG -->
+        <svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;" viewBox="0 0 960 580">
+          <!-- Mediterranean coast (right side = west in RTL) -->
+          <polyline points="870,60 850,120 840,200 830,280 820,360 810,440 800,500 780,540"
+            fill="none" stroke="#1a3a1a" stroke-width="40" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/>
+          <!-- Red Sea / Gulf of Aqaba -->
+          <polyline points="680,480 700,510 720,540 740,570"
+            fill="none" stroke="#1a3a1a" stroke-width="30" stroke-linecap="round" opacity="0.5"/>
+        </svg>
+        <svg class="map-route" id="map-routes"></svg>
+        <div class="map-ship" id="map-ship">⛵</div>
+        <div class="map-location loc-haifa" data-loc="haifa" onclick="game.travelTo('haifa')">
+          <div class="loc-icon">⚓</div>
+          <div class="loc-name">חיפה</div>
+          <div class="loc-dist" id="dist-haifa"></div>
+          <div class="loc-price" id="price-haifa"></div>
+        </div>
+        <div class="map-location loc-jaffa" data-loc="jaffa" onclick="game.travelTo('jaffa')">
+          <div class="loc-icon">🏛️</div>
+          <div class="loc-name">יפו</div>
+          <div class="loc-dist" id="dist-jaffa"></div>
+          <div class="loc-price" id="price-jaffa"></div>
+        </div>
+        <div class="map-location loc-eilat" data-loc="eilat" onclick="game.travelTo('eilat')">
+          <div class="loc-icon">🌴</div>
+          <div class="loc-name">אילת</div>
+          <div class="loc-dist" id="dist-eilat"></div>
+          <div class="loc-price" id="price-eilat"></div>
+        </div>
+      </div>
+    </div>
+    <div class="map-instructions">
+      לחץ על יעד לנסיעה &nbsp;|&nbsp; <span class="c-cyan">[ESC]</span> חזור
+    </div>
+  </div>
+
+  <!-- GAME OVER SCREEN -->
+  <div id="screen-gameover" class="screen">
+    <div id="gameover-title" class="gameover-title"></div>
+    <div class="score-rank" id="score-rank"></div>
+    <div class="final-stats" id="final-stats"></div>
+    <button class="restart-btn" onclick="game.restart()">🔄 משחק חדש</button>
+  </div>
+
+  <!-- MODAL OVERLAY -->
+  <div id="modal-overlay" class="modal-overlay">
+    <div class="modal-window">
+      <div class="modal-title" id="modal-title"></div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-buttons" id="modal-buttons"></div>
+    </div>
+  </div>
+
+</div><!-- end game-container -->
+<script src="game.js"></script>
+</body>
+</html>
